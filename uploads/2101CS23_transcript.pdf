@@ -1,0 +1,433 @@
+/* set a single pixel on the screen at x,y
+ * x in [0,319], y in [0,239], and colour in [0,65535]
+ */
+#include <unistd.h>
+#define JTAG_UART_BASE ((volatile int*) 0xFF201000)
+#define JTAG_UART_CONTROL ((volatile int*) (0xFF201000+4))
+
+#define M_PI   3.14159265358979323846264338327950288
+#define n 20
+short GREEN = 0xff00;
+void write_pixel(int x, int y, short colour) {
+  volatile short *vga_addr=(volatile short*)(0x08000000 + (y<<10) + (x<<1));
+  *vga_addr=colour;
+}
+
+/* write a single character to the character buffer at x,y
+ * x in [0,79], y in [0,59]
+ */
+void write_char(int x, int y, char c) {
+  // VGA character buffer
+  volatile char * character_buffer = (char *) (0x09000000 + (y<<7) + x);
+  *character_buffer = c;
+}
+
+/* use write_pixel to set entire screen to black (does not clear the character buffer) */
+void clear_screen() {
+  int x, y;
+  for (x = 0; x < 320; x++) {
+    for (y = 0; y < 240; y++) {
+    write_pixel(x,y,0);
+  }
+  }
+
+  
+  for (x = 0; x < 80; x++) {
+    for (y = 0; y < 60; y++) {
+    write_char(x,y,(char)0);
+  }
+  }
+
+
+
+}
+
+
+void clear_pixel() {
+  int x, y;
+  for (x = 0; x < 320; x++) {
+    for (y = 0; y < 240; y++) {
+    write_pixel(x,y,0);
+  }
+  }
+
+  
+
+}
+void clear_char() {
+  int x, y;
+  for (x = 0; x < 80; x++) {
+    for (y = 0; y < 60; y++) {
+    write_char(x,y,(char)0);
+  }
+  }
+  
+}
+
+double sqrt(double x)
+{
+  double temp,ans;
+  ans=x/2;
+  temp=0;
+  while(temp!=ans)
+  {
+    temp=ans;
+    ans=(x/temp + temp)/2;
+  }
+  return ans;
+
+}
+
+double sin(double x) //sin calculation
+{
+double sum;
+double fa;
+double pow;
+sum = 0.0;
+for(int i = 0; i <= n; i++)
+{
+fa = 1.0;
+pow = 1.0;
+for(int j = 1; j <= 2*i+1; j++)
+{
+fa *= j;
+pow *= x;
+}
+sum += ((i%2?-1.0:1.0)/fa)*pow;
+}
+return sum;
+}
+
+double cos(double x) //cosine calculation
+{
+double sum;
+double fa;
+double pow;
+sum = 0.0;
+for(int i = 0; i <= n; i++)
+{
+fa = 1.0;
+pow = 1.0;
+for(int j = 1; j <= 2*i; j++)
+{
+fa *= j;
+pow *= x;
+}
+sum += ((i%2?-1.0:1.0)/fa)*pow;
+}
+return sum;
+}
+
+/*This function takes in the coordinates of the top-left and bottom-right 
+corners of the rectangle, and the desired colour to draw the rectangle with.*/
+void draw_rectangle(int x1, int y1, int x2, int y2, short colour) {
+  int x, y;
+  // Draw the horizontal lines
+  for (x = x1; x <= x2; x++) {
+    write_pixel(x, y1, colour);
+    write_pixel(x, y2, colour);
+  }
+  // Draw the vertical lines
+  for (y = y1; y <= y2; y++) {
+    write_pixel(x1, y, colour);
+    write_pixel(x2, y, colour);
+  }
+}
+
+void helpcirc(int xc, int yc, int x, int y, short c)
+{
+    write_pixel(xc+x, yc+y,c);
+    write_pixel(xc-x, yc+y, c);
+    write_pixel(xc+x, yc-y,c);
+    write_pixel(xc-x, yc-y, c);
+  
+    write_pixel(xc+y, yc+x, c);
+    write_pixel(xc-y, yc+x, c);
+    write_pixel(xc+y, yc-x, c);
+    write_pixel(xc-y, yc-x, c);
+   
+
+}
+ 
+// Function for circle-generation
+// using Bresenham's algorithm
+void draw_circle(int xc, int yc, int r, short colour)
+{
+  short c = colour;
+    int x = 0, y = r;
+    int d = 3 - 2 * r;
+    helpcirc(xc, yc, x, y, c);
+    while (y >= x)
+    {
+        x++;
+        if (d > 0)
+        {
+            y--;
+            d = d + 4 * (x - y) + 10;
+        }
+        else
+            d = d + 4 * x + 6;
+        helpcirc(xc, yc, x, y, c);
+        
+    }
+}
+
+/* Draw a line on the screen from (x0, y0) to (x1, y1) 
+The draw_line function takes the starting and ending coordinates of the line, 
+as well as the desired color for the line. 
+It uses the Bresenham's line algorithm to plot pixels along the line.*/
+void draw_line(int x1, int y1, int x2, int y2,   short colour)
+{
+  int dx;
+  int dy;
+  int decide;
+  int temp;
+  if(x1>x2) dx=x1-x2; else dx=x2-x1;
+  if(y1>y2) dy=y1-y2; else dy=y2-y1;
+  if(dx>dy) decide=0; else decide=1;
+  if(decide)  {
+    temp=dx;
+    dx=dy;
+    dy=temp;
+  }
+  //decide is just for slope
+
+    int pk = 2 * dy - dx;
+    for (int i = 0; i <= dx; i++) {
+
+        x1 < x2 ? x1++ : x1--;
+        if (pk < 0) {
+    
+            if (decide == 0) {
+               write_pixel(x1, y1, colour );
+                pk = pk + 2 * dy;
+            }
+            else {
+                //(y1,x1) is passed in xt
+                write_pixel(y1, x1, colour );
+                pk = pk + 2 * dy;
+            }
+        }
+        else {
+            y1 < y2 ? y1++ : y1--;
+            if (decide == 0) {
+ 
+              write_pixel(x1, y1, colour );
+            }
+            else {
+               write_pixel(y1, x1, colour );
+            }
+            pk = pk + 2 * dy - 2 * dx;
+        }
+    }
+}
+
+void spike(int x,int y, short colour)
+{
+  int i=0;
+  for(i=0;i<3;i++)
+  draw_line(x+i,y-i,x+5-i,y-i,colour);
+}
+
+void spikes(int x, int y, short colour)
+{
+	spike(x,y,colour);
+	spike(x+6,y,colour);
+	spike(x+12,y,colour);
+	spike(x+18,y,colour);
+	spike(x+24,y,colour);
+	
+}
+/*This function takes in the coordinates of the three vertices of the triangle
+, and the desired colour to draw the triangle with.*/
+void draw_triangle(int x1, int y1, int x2, int y2, int x3, int y3, short colour) {
+  // Draw the three sides of the triangle
+  draw_line(x1, y1, x2, y2, colour);
+  draw_line(x2, y2, x3, y3, colour);
+  draw_line(x3, y3, x1, y1, colour);
+}
+int abs(int x)
+{
+	if(x<0) return (0-x);
+	else return x;
+}
+void draw_line_gupta(int x1, int y1, int x2, int y2, short colour) 
+{
+    int dx = abs(x2 - x1);
+    int dy = abs(y2 - y1);
+    int two_dx = 2 * dx;
+    int two_dy = 2 * dy;
+    int p = two_dy - dx;
+    int x = x1, y = y1;
+    int ix = x1 < x2 ? 1 : -1;
+    int iy = y1 < y2 ? 1 : -1;
+    if (dx >= dy) 
+  {
+        while (x != x2) 
+    {
+            write_pixel(x, y, colour);
+            if (p >= 0)
+      {
+                y += iy;
+                p -= two_dx;
+            }
+            p += two_dy;
+            x += ix;
+        }
+    }
+  else 
+  {
+        while (y != y2)
+    {
+            write_pixel(x, y, colour);
+            if (p >= 0) 
+      {
+                x += ix;
+                p -= two_dy;
+          }
+            p += two_dx;
+            y += iy;
+        }
+    }
+    write_pixel(x, y, colour);
+}
+char get_jtag(volatile int *JTAG_UART_ptr) {
+  int data;
+  data = *(JTAG_UART_ptr);
+  if (data & 0x00008000) // check RVALID
+    return ((char)data & 0xFF);
+  else
+    return ('\0');
+}
+
+//print user text to console
+void put_jtag(volatile int *JTAG_UART_ptr, char c) {
+  int control;
+  control = *(JTAG_UART_ptr + 1); // read control reg
+  if (control & 0xFFFF0000) {
+    *(JTAG_UART_ptr) = c;
+  }
+}
+void ssleep(int time)
+{
+  int x;
+  for(x=0;x<time;x++) {}
+}
+void home_screen()
+{
+  int i;
+  int x;
+  for(i=30;i<=290;i++) write_pixel(i,210,0xff00);
+  for(i=30;i<=290;i++) write_pixel(i,30,0xff00);
+  for(i=30;i<=210;i++) write_pixel(30,i,GREEN);
+  for(i=30;i<=210;i++) write_pixel(290,i,GREEN);
+   char* hw2 = "Welcome to Our Game";
+      x = 30;
+      while (*hw2) {
+        write_char(x, 15, *hw2);
+     x++;
+     hw2++;
+   }
+   char* hw3 = "Press P to Play";
+      x = 30;
+      while (*hw3) {
+        write_char(x, 19, *hw3);
+     x++;
+     hw3++;
+   }
+}
+
+// Define the colors
+#define BORDER_COLOR 0xff00
+#define BACKGROUND_COLOR 0x0000
+#define CLEARED_COLOR 0x00ff
+#define UNCLEARED_COLOR 0xffff
+#define LEVEL_BOX_SIZE 50
+#define LEVEL_BOX_PADDING 12
+
+// Colors
+#define LEVEL_BOX_COLOR 0xF000
+#define CLEARED_LEVEL_BOX_COLOR 0xff70
+
+// Define the level screen dimensions
+#define LEVEL_SCREEN_WIDTH 320
+#define LEVEL_SCREEN_HEIGHT 240
+#define LEVEL_SCREEN_BORDER_SIZE 5
+#define LEVEL_SCREEN_BOX_SIZE 50
+#define LEVEL_SCREEN_BOX_GAP 10
+
+// Define the number of levels
+#define NUM_LEVELS 12
+#define GREEN 0x0ff0
+#define BLUE 0xff00
+#define WHITE 0xffff
+#define YELLOW 0xff70
+  #define RED 0xF800
+// Define the cleared levels array
+int cleared[NUM_LEVELS] = {1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+
+void draw_level_screen() {
+  short colors[12];
+  //for(int i=0;i<12;i++) colors[i]=0xF800;
+  clear_screen();
+    // draw border
+  int i;
+    for( i = 30; i <= 290; i++) {
+        write_pixel(i, 210, 0xff00);
+        write_pixel(i, 30, 0xff00);
+    }
+    for( i = 30; i <= 210; i++) {
+        write_pixel(30, i,0xff00);
+        write_pixel(290, i, 0xff00);
+    }
+   int x_start = 30 + LEVEL_BOX_PADDING;
+    int y_start = 39;
+    int box_width = LEVEL_BOX_SIZE;
+    int box_height = LEVEL_BOX_SIZE-3;
+    int x_spacing = LEVEL_BOX_PADDING + LEVEL_BOX_SIZE;
+    int y_spacing = 9 + LEVEL_BOX_SIZE-3;
+  int f;
+  f=12;
+  for(i=11;i>=0;i--) if(cleared[i]) {f=i; break;}
+  if(f==12) for(i=0;i<12;i++) colors[i]=RED;
+  else if(f==11) for(i=0;i<12;i++) colors[i]=GREEN;
+  else if(f==10) {for(i=0;i<11;i++) colors[i]=GREEN; colors[11]=YELLOW;}
+  else {for(i=0;i<f+1;i++) colors[i]=GREEN;  colors[f+1]=YELLOW;
+      for(i=f+2;i<12;i++) colors[i]=RED;}
+
+   int level;
+    for(level = 0; level < 12; level++) {
+        int x = x_start + (level % 4) * x_spacing;
+        int y = y_start + (level / 4) * y_spacing;
+        int box_color = colors[level];
+        // Draw the box
+        int row, col;
+        for(row = 0; row < box_height; row++) {
+            for(col = 0; col < box_width; col++) {
+                write_pixel(x + col, y + row, box_color);
+            }
+        }
+    }
+}
+
+void character(int x, int y, int action)
+{
+    int i=0;
+    int j=0;
+    for(i=0;i<30;i++){
+      for(j=0;j<30;j++)
+      write_pixel(x+i,y+j,0xffff);
+      }
+}
+
+
+
+int main () {
+
+   clear_screen();
+  spike(50,50,0x0ff0);
+   return 0;
+}
+
+
+
